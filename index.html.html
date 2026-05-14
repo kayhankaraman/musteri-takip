@@ -224,39 +224,143 @@ textarea{min-height:66px;resize:vertical;}
 
 <script>
 // ============================================================
-// STORAGE — IndexedDB, senkron gibi kullanılabilir yardımcılar
+// FIREBASE SDK — Realtime Firestore
 // ============================================================
-const DB_NAME = 'mmt5', DB_VER = 1, STORE = 'data';
-let db = null;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDvB2qagXLj7NHCjqvOdQQQIuKbXi-LiLo",
+  authDomain: "musteri-takip-fe1d1.firebaseapp.com",
+  projectId: "musteri-takip-fe1d1",
+  storageBucket: "musteri-takip-fe1d1.firebasestorage.app",
+  messagingSenderId: "6041388925",
+  appId: "1:6041388925:web:1f86bb742b66c4edc16e14"
+};
 
-function openDB() {
-  return new Promise((resolve, reject) => {
-    if (db) { resolve(db); return; }
-    const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = e => e.target.result.createObjectStore(STORE);
-    req.onsuccess = e => { db = e.target.result; resolve(db); };
-    req.onerror = e => reject(e);
+// Firebase SDK (CDN üzerinden, modular)
+let _db = null;
+let _firebase_ready = false;
+
+function loadFirebaseSDK() {
+  return new Promise((resolve) => {
+    if (_firebase_ready) { resolve(); return; }
+    // import maps ile modular SDK
+    const script1 = document.createElement('script');
+    script1.type = 'module';
+    script1.textContent = `
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+      import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, enableIndexedDbPersistence } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+      
+      const app = initializeApp({
+        apiKey: "AIzaSyDvB2qagXLj7NHCjqvOdQQQIuKbXi-LiLo",
+        authDomain: "musteri-takip-fe1d1.firebaseapp.com",
+        projectId: "musteri-takip-fe1d1",
+        storageBucket: "musteri-takip-fe1d1.firebasestorage.app",
+        messagingSenderId: "6041388925",
+        appId: "1:6041388925:web:1f86bb742b66c4edc16e14"
+      });
+      const db = getFirestore(app);
+      
+      // Offline cache
+      try { enableIndexedDbPersistence(db); } catch(e) {}
+      
+      window._firestore = db;
+      window._fsCollection = collection;
+      window._fsDoc = doc;
+      window._fsSetDoc = setDoc;
+      window._fsGetDocs = getDocs;
+      window._fsDeleteDoc = deleteDoc;
+      window._firebase_ready = true;
+      window.dispatchEvent(new Event('firebase_ready'));
+    `;
+    document.head.appendChild(script1);
+    window.addEventListener('firebase_ready', () => { _firebase_ready = true; resolve(); }, { once: true });
+    // Timeout fallback
+    setTimeout(() => { if (!_firebase_ready) { console.error('Firebase yüklenemedi'); resolve(); } }, 8000);
   });
 }
 
-async function dbSave(key, value) {
-  const d = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = d.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put(value, key);
-    tx.oncomplete = () => resolve(true);
-    tx.onerror = e => reject(e);
-  });
+async function ensureFirebase() {
+  if (!_firebase_ready) await loadFirebaseSDK();
+  // Kısa bekleme - module script async
+  let tries = 0;
+  while (!window._firestore && tries < 50) {
+    await new Promise(r => setTimeout(r, 100));
+    tries++;
+  }
 }
 
-async function dbLoad(key) {
-  const d = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = d.transaction(STORE, 'readonly');
-    const req = tx.objectStore(STORE).get(key);
-    req.onsuccess = e => resolve(e.target.result);
-    req.onerror = e => reject(e);
-  });
+async function saveAll() {
+  try {
+    await ensureFirebase();
+    if (!window._firestore) throw new Error('Firestore hazır değil');
+    
+    const promises = customers.map(c => {
+      const docRef = window._fsDoc(window._firestore, 'customers', c.id);
+      return window._fsSetDoc(docRef, c);
+    });
+    await Promise.all(promises);
+    showSaveInd();
+    console.log('Firebase'e kaydedildi:', customers.length, 'müşteri');
+  } catch(e) {
+    console.error('Kayıt hatası:', e);
+    showSaveInd('hata');
+  }
+}
+
+async function loadAll() {
+  try {
+    showLoading(true);
+    await ensureFirebase();
+    if (!window._firestore) { customers = []; return; }
+    
+    const snapshot = await window._fsGetDocs(window._fsCollection(window._firestore, 'customers'));
+    customers = [];
+    snapshot.forEach(doc => {
+      const c = doc.data();
+      c.models = c.models || [];
+      c.models.forEach(m => { m.images = m.images || []; });
+      customers.push(c);
+    });
+    console.log('Firebase'den yüklendi:', customers.length, 'müşteri');
+  } catch(e) {
+    console.error('Yükleme hatası:', e);
+    customers = [];
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function deleteFromCloud(cid) {
+  try {
+    await ensureFirebase();
+    if (!window._firestore) return;
+    const docRef = window._fsDoc(window._firestore, 'customers', cid);
+    await window._fsDeleteDoc(docRef);
+  } catch(e) { console.error('Silme hatası:', e); }
+}
+
+function showLoading(show) {
+  let el = document.getElementById('loading-bar');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'loading-bar';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#3b82f6,#8b5cf6);z-index:9999;transition:opacity .5s;';
+    document.body.appendChild(el);
+  }
+  el.style.opacity = show ? '1' : '0';
+}
+
+function showSaveInd(type) {
+  const el = document.getElementById('save-ind');
+  if (type === 'hata') {
+    el.textContent = '⚠ Bağlantı hatası';
+    el.style.background = '#faeeda'; el.style.color = '#633806'; el.style.borderColor = '#f0c080';
+  } else {
+    el.textContent = '✓ Kaydedildi';
+    el.style.background = '#eaf3de'; el.style.color = '#27500a'; el.style.borderColor = '#c0dd97';
+  }
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2500);
 }
 
 // ============================================================
@@ -462,7 +566,7 @@ async function deleteCustomer(cid) {
   if (!confirm('Bu müşteriyi silmek istediğinize emin misiniz?')) return;
   customers = customers.filter(c=>c.id!==cid);
   expanded.delete(cid);
-  await saveAll();
+  await deleteFromCloud(cid);
   renderList();
   showToast('Müşteri silindi');
 }
