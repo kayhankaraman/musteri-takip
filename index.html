@@ -120,6 +120,9 @@ textarea{min-height:66px;resize:vertical;}
 #save-ind{position:fixed;bottom:26px;right:20px;background:#eaf3de;color:#27500a;border:1px solid #c0dd97;padding:6px 14px;border-radius:8px;font-size:12px;z-index:9997;opacity:0;transition:opacity .3s;pointer-events:none;}
 #save-ind.show{opacity:1;}
 </style>
+<!-- Firebase CDN -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div class="app">
@@ -224,82 +227,29 @@ textarea{min-height:66px;resize:vertical;}
 
 <script>
 // ============================================================
-// FIREBASE SDK — Realtime Firestore
+// FIREBASE — Firestore (compat SDK)
 // ============================================================
-const FIREBASE_CONFIG = {
+firebase.initializeApp({
   apiKey: "AIzaSyDvB2qagXLj7NHCjqvOdQQQIuKbXi-LiLo",
   authDomain: "musteri-takip-fe1d1.firebaseapp.com",
   projectId: "musteri-takip-fe1d1",
   storageBucket: "musteri-takip-fe1d1.firebasestorage.app",
   messagingSenderId: "6041388925",
   appId: "1:6041388925:web:1f86bb742b66c4edc16e14"
-};
+});
 
-// Firebase SDK (CDN üzerinden, modular)
-let _db = null;
-let _firebase_ready = false;
-
-function loadFirebaseSDK() {
-  return new Promise((resolve) => {
-    if (_firebase_ready) { resolve(); return; }
-    // import maps ile modular SDK
-    const script1 = document.createElement('script');
-    script1.type = 'module';
-    script1.textContent = `
-      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-      import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, enableIndexedDbPersistence } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-      
-      const app = initializeApp({
-        apiKey: "AIzaSyDvB2qagXLj7NHCjqvOdQQQIuKbXi-LiLo",
-        authDomain: "musteri-takip-fe1d1.firebaseapp.com",
-        projectId: "musteri-takip-fe1d1",
-        storageBucket: "musteri-takip-fe1d1.firebasestorage.app",
-        messagingSenderId: "6041388925",
-        appId: "1:6041388925:web:1f86bb742b66c4edc16e14"
-      });
-      const db = getFirestore(app);
-      
-      // Offline cache
-      try { enableIndexedDbPersistence(db); } catch(e) {}
-      
-      window._firestore = db;
-      window._fsCollection = collection;
-      window._fsDoc = doc;
-      window._fsSetDoc = setDoc;
-      window._fsGetDocs = getDocs;
-      window._fsDeleteDoc = deleteDoc;
-      window._firebase_ready = true;
-      window.dispatchEvent(new Event('firebase_ready'));
-    `;
-    document.head.appendChild(script1);
-    window.addEventListener('firebase_ready', () => { _firebase_ready = true; resolve(); }, { once: true });
-    // Timeout fallback
-    setTimeout(() => { if (!_firebase_ready) { console.error('Firebase yüklenemedi'); resolve(); } }, 8000);
-  });
-}
-
-async function ensureFirebase() {
-  if (!_firebase_ready) await loadFirebaseSDK();
-  // Kısa bekleme - module script async
-  let tries = 0;
-  while (!window._firestore && tries < 50) {
-    await new Promise(r => setTimeout(r, 100));
-    tries++;
-  }
-}
+const db = firebase.firestore();
 
 async function saveAll() {
   try {
-    await ensureFirebase();
-    if (!window._firestore) throw new Error('Firestore hazır değil');
-    
-    const promises = customers.map(c => {
-      const docRef = window._fsDoc(window._firestore, 'customers', c.id);
-      return window._fsSetDoc(docRef, c);
+    const batch = db.batch();
+    customers.forEach(c => {
+      const ref = db.collection('customers').doc(c.id);
+      batch.set(ref, c);
     });
-    await Promise.all(promises);
+    await batch.commit();
     showSaveInd();
-    console.log('Firebase'e kaydedildi:', customers.length, 'müşteri');
+    console.log('Kaydedildi:', customers.length, 'müşteri');
   } catch(e) {
     console.error('Kayıt hatası:', e);
     showSaveInd('hata');
@@ -309,10 +259,7 @@ async function saveAll() {
 async function loadAll() {
   try {
     showLoading(true);
-    await ensureFirebase();
-    if (!window._firestore) { customers = []; return; }
-    
-    const snapshot = await window._fsGetDocs(window._fsCollection(window._firestore, 'customers'));
+    const snapshot = await db.collection('customers').get();
     customers = [];
     snapshot.forEach(doc => {
       const c = doc.data();
@@ -320,7 +267,7 @@ async function loadAll() {
       c.models.forEach(m => { m.images = m.images || []; });
       customers.push(c);
     });
-    console.log('Firebase'den yüklendi:', customers.length, 'müşteri');
+    console.log('Yüklendi:', customers.length, 'müşteri');
   } catch(e) {
     console.error('Yükleme hatası:', e);
     customers = [];
@@ -331,10 +278,7 @@ async function loadAll() {
 
 async function deleteFromCloud(cid) {
   try {
-    await ensureFirebase();
-    if (!window._firestore) return;
-    const docRef = window._fsDoc(window._firestore, 'customers', cid);
-    await window._fsDeleteDoc(docRef);
+    await db.collection('customers').doc(cid).delete();
   } catch(e) { console.error('Silme hatası:', e); }
 }
 
