@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Müşteri Model Takip</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f4f3f0;color:#1a1a1a;min-height:100vh;}
+.app{max-width:1040px;margin:0 auto;padding:24px 18px 80px;}
+.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;}
+.header h1{font-size:21px;font-weight:600;}
+.header-sub{font-size:12px;color:#999;margin-top:3px;}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+.stat{background:#fff;border:1px solid #e8e7e4;border-radius:12px;padding:14px 16px;}
+.stat-label{font-size:11px;color:#999;margin-bottom:3px;}
+.stat-val{font-size:26px;font-weight:600;}
+.nav{display:flex;border-bottom:1px solid #e0deda;margin-bottom:20px;}
+.nav-btn{padding:9px 18px;font-size:13px;background:none;border:none;cursor:pointer;color:#888;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit;}
+.nav-btn.active{color:#1a1a1a;border-bottom-color:#1a1a1a;font-weight:500;}
+.nav-btn:hover:not(.active){color:#444;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:1px solid #d0ceca;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;color:#1a1a1a;font-family:inherit;}
+.btn:hover{background:#f4f3f0;}
+.btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a;font-weight:500;}
+.btn-primary:hover{background:#333;}
+.btn-primary:disabled{background:#888;border-color:#888;cursor:not-allowed;}
+.btn-danger{color:#a32d2d;border-color:rgba(163,45,45,.25);}
+.btn-danger:hover{background:#fff0f0;}
+.btn-sm{padding:4px 9px;font-size:12px;}
+/* Customer cards */
+.cust-card{background:#fff;border:1px solid #e8e7e4;border-radius:12px;overflow:hidden;margin-bottom:10px;}
+.card-hdr{display:flex;align-items:center;gap:12px;padding:13px 15px;background:#faf9f7;border-bottom:1px solid #f0efec;cursor:pointer;user-select:none;}
+.card-hdr:hover{background:#f4f3f0;}
+.card-body{padding:14px 16px;}
+.avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;}
+/* Models */
+.models-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:9px;margin-top:4px;margin-bottom:6px;}
+.model-card{border:1px solid #ece9e4;border-radius:10px;overflow:hidden;background:#faf9f7;}
+.model-card-img{width:100%;height:108px;object-fit:cover;display:block;cursor:pointer;}
+.model-card-img:hover{opacity:.88;}
+.model-noimg{width:100%;height:108px;display:flex;align-items:center;justify-content:center;background:#f0efec;color:#ccc;font-size:30px;}
+.model-card-body{padding:7px 9px 9px;}
+.model-card-name{font-size:12px;font-weight:500;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.model-extra{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
+.model-extra-thumb{width:32px;height:26px;border-radius:4px;object-fit:cover;cursor:pointer;border:1px solid #e0deda;}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block;}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:500;}
+.bw{background:#faeeda;color:#633806;}.ba{background:#eaf3de;color:#27500a;}.bd{background:#e6f1fb;color:#0c447c;}.bp{background:#eeedfe;color:#3c3489;}
+/* Form */
+.form-panel{background:#fff;border:1px solid #e8e7e4;border-radius:12px;padding:20px 22px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:13px;}
+.fg{margin-bottom:14px;}
+.fl{display:block;font-size:12px;color:#777;margin-bottom:4px;}
+.sec{font-size:10px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
+input[type=text],input[type=datetime-local],input[type=date],select,textarea{width:100%;padding:7px 10px;border:1px solid #d8d6d2;border-radius:8px;font-size:13px;font-family:inherit;color:#1a1a1a;background:#fff;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#999;}
+textarea{min-height:66px;resize:vertical;}
+/* Model entry in form */
+.model-entry{border:1px solid #ece9e4;border-radius:10px;margin-bottom:9px;overflow:hidden;background:#faf9f7;}
+.me-top{display:flex;align-items:center;gap:8px;padding:9px 11px;}
+.me-fields{flex:1;display:grid;grid-template-columns:1fr 148px 130px;gap:7px;align-items:center;}
+.me-imgs{padding:0 11px 10px;display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;}
+.upload-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border:1.5px dashed #ccc;border-radius:7px;background:#fff;cursor:pointer;font-size:11px;color:#999;font-family:inherit;}
+.upload-btn:hover{border-color:#888;color:#555;}
+.tform{display:flex;flex-wrap:wrap;gap:5px;}
+.tf{position:relative;width:70px;height:56px;border-radius:6px;overflow:hidden;border:1px solid #e0deda;}
+.tf img{width:100%;height:100%;object-fit:cover;cursor:pointer;}
+.tf-del{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:17px;height:17px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
+.rem-btn{background:none;border:none;cursor:pointer;color:#bbb;font-size:20px;line-height:1;padding:0 2px;}
+.rem-btn:hover{color:#a32d2d;}
+.note-box{background:#f8f7f5;border-radius:8px;padding:9px 12px;margin-bottom:10px;}
+.note-lbl{font-size:10px;color:#bbb;margin-bottom:3px;}
+.note-txt{font-size:13px;line-height:1.6;color:#333;}
+.meeting-pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#666;margin-top:8px;}
+.meeting-pill strong{color:#1a1a1a;}
+.chevron{font-size:12px;color:#bbb;margin-left:4px;transition:transform .2s;}
+.chevron.open{transform:rotate(180deg);}
+.action-row{display:flex;gap:8px;margin-top:10px;}
+.search-bar{display:flex;gap:9px;margin-bottom:14px;}
+.search-bar input{flex:1;}
+.search-bar select{width:160px;}
+.empty{text-align:center;padding:44px 20px;color:#bbb;font-size:14px;}
+.empty-icon{font-size:34px;margin-bottom:10px;}
+/* Calendar */
+.cal-wrap{background:#fff;border:1px solid #e8e7e4;border-radius:12px;overflow:hidden;}
+.cal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #f0efec;background:#faf9f7;}
+.cal-title{font-size:16px;font-weight:600;}
+.cal-grid-header{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid #f0efec;}
+.cal-day-name{text-align:center;font-size:11px;font-weight:600;color:#aaa;padding:8px 0;letter-spacing:.04em;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-cell{min-height:88px;border-right:1px solid #f4f3f0;border-bottom:1px solid #f4f3f0;padding:5px;cursor:pointer;}
+.cal-cell:hover{background:#faf9f7;}
+.cal-cell.other-month .cal-day-num{color:#ccc;}
+.cal-cell.today .cal-day-num{background:#1a1a1a;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:600;}
+.cal-cell.selected{background:#f0f4ff;}
+.cal-day-num{font-size:12px;font-weight:500;width:22px;height:22px;display:flex;align-items:center;justify-content:center;margin-bottom:2px;}
+.cal-event{font-size:10px;border-radius:4px;padding:2px 5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
+.cal-event.meeting{background:#dbeafe;color:#1e40af;}
+.cal-event.model{background:#dcfce7;color:#166534;}
+.cal-more{font-size:10px;color:#888;padding:1px 4px;}
+.cal-detail{border-top:1px solid #f0efec;padding:16px 18px;}
+.cal-detail-title{font-size:13px;font-weight:600;margin-bottom:10px;color:#555;}
+.cal-event-item{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border:1px solid #ece9e4;border-radius:8px;margin-bottom:7px;background:#faf9f7;}
+.cal-event-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.cal-event-name{font-size:13px;font-weight:500;}
+.cal-event-meta{font-size:11px;color:#999;margin-top:2px;}
+.cal-legend{display:flex;gap:14px;padding:10px 18px;border-top:1px solid #f4f3f0;font-size:11px;color:#888;}
+.cal-legend span{display:flex;align-items:center;gap:5px;}
+.leg-dot{width:8px;height:8px;border-radius:50%;}
+/* Lightbox */
+#lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center;flex-direction:column;}
+#lightbox.open{display:flex;}
+#lightbox img{max-width:90vw;max-height:85vh;border-radius:10px;object-fit:contain;}
+#lb-close{position:absolute;top:16px;right:24px;color:#fff;font-size:34px;cursor:pointer;background:none;border:none;}
+/* Toast */
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;z-index:9998;pointer-events:none;opacity:0;transition:opacity .25s;white-space:nowrap;}
+#toast.show{opacity:1;}
+#toast.err{background:#a32d2d;}
+/* Save indicator */
+#save-ind{position:fixed;bottom:26px;right:20px;background:#eaf3de;color:#27500a;border:1px solid #c0dd97;padding:6px 14px;border-radius:8px;font-size:12px;z-index:9997;opacity:0;transition:opacity .3s;pointer-events:none;}
+#save-ind.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <h1>📋 Müşteri Model Takip</h1>
+      <div class="header-sub">Müşteriler · Modeller · Fotoğraflar · Dahili Takvim</div>
+    </div>
+    <button class="btn btn-primary" onclick="openAddForm()">+ Yeni Müşteri</button>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Toplam müşteri</div><div class="stat-val" id="s-total">0</div></div>
+    <div class="stat"><div class="stat-label">Aktif model</div><div class="stat-val" id="s-active">0</div></div>
+    <div class="stat"><div class="stat-label">Bu ay görüşme</div><div class="stat-val" id="s-month">0</div></div>
+    <div class="stat"><div class="stat-label">Yaklaşan hedef</div><div class="stat-val" id="s-upcoming">0</div></div>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" id="tab-liste" onclick="showTab('liste')">👥 Müşteriler</button>
+    <button class="nav-btn" id="tab-ekle" onclick="showTab('ekle')">➕ Yeni Müşteri</button>
+    <button class="nav-btn" id="tab-takvim" onclick="showTab('takvim')">📅 Takvim</button>
+  </div>
+
+  <!-- LIST -->
+  <div id="panel-liste">
+    <div class="search-bar">
+      <input type="text" id="q" placeholder="Müşteri ara..." oninput="renderList()">
+      <select id="fst" onchange="renderList()">
+        <option value="all">Tüm durumlar</option>
+        <option value="waiting">Bekliyor</option>
+        <option value="active">Aktif</option>
+        <option value="done">Tamamlandı</option>
+      </select>
+    </div>
+    <div id="clist"></div>
+  </div>
+
+  <!-- FORM -->
+  <div id="panel-ekle" style="display:none;">
+    <div class="form-panel">
+      <div class="sec">Müşteri bilgileri</div>
+      <div class="form-row">
+        <div class="fg"><label class="fl">Ad soyad *</label><input type="text" id="fn" placeholder="Ahmet Yıldız"></div>
+        <div class="fg"><label class="fl">Telefon / e-posta</label><input type="text" id="fc" placeholder="0500 000 00 00"></div>
+      </div>
+      <div class="fg"><label class="fl">Görüşme notu</label><textarea id="fno" placeholder="Bu görüşmede neler konuşuldu?"></textarea></div>
+      <div class="sec" style="margin-top:18px;">İstenen modeller <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#ccc;font-size:11px;">— her modele fotoğraf ekleyebilirsiniz</span></div>
+      <div id="mentries"></div>
+      <button class="btn" style="margin-bottom:18px;" onclick="addME()">+ Model ekle</button>
+      <div class="sec" style="margin-top:4px;">Bir sonraki görüşme</div>
+      <div class="form-row">
+        <div class="fg"><label class="fl">📅 Tarih ve saat</label><input type="datetime-local" id="fdt"></div>
+        <div class="fg"><label class="fl">Süre</label>
+          <select id="fdur">
+            <option value="30">30 dk</option><option value="45">45 dk</option>
+            <option value="60" selected>1 saat</option><option value="90">1.5 saat</option><option value="120">2 saat</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Yer / link (opsiyonel)</label><input type="text" id="floc" placeholder="Ofis, Zoom linki..."></div>
+      <div class="action-row">
+        <button class="btn btn-primary" id="sbtn" onclick="saveCustomer()">💾 Kaydet</button>
+        <button class="btn" onclick="cancelForm()">İptal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div id="panel-takvim" style="display:none;">
+    <div class="cal-wrap">
+      <div class="cal-header">
+        <div class="cal-title" id="cal-title"></div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn btn-sm" onclick="goToday()">Bugün</button>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm" onclick="prevMonth()">‹</button>
+            <button class="btn btn-sm" onclick="nextMonth()">›</button>
+          </div>
+        </div>
+      </div>
+      <div class="cal-grid-header">
+        <div class="cal-day-name">PZT</div><div class="cal-day-name">SAL</div>
+        <div class="cal-day-name">ÇAR</div><div class="cal-day-name">PER</div>
+        <div class="cal-day-name">CUM</div><div class="cal-day-name">CMT</div>
+        <div class="cal-day-name">PAZ</div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-detail" id="cal-detail" style="display:none;"></div>
+      <div class="cal-legend">
+        <span><div class="leg-dot" style="background:#3b82f6;"></div>Müşteri görüşmesi</span>
+        <span><div class="leg-dot" style="background:#22c55e;"></div>Model hedef tarihi</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox" onclick="closeLB()">
+  <button id="lb-close" onclick="closeLB()">×</button>
+  <img id="lb-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+<div id="toast"></div>
+<div id="save-ind">✓ Kaydedildi</div>
+
+<script>
+// ============================================================
+// FIREBASE SDK — Realtime Firestore
+// ============================================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDvB2qagXLj7NHCjqvOdQQQIuKbXi-LiLo",
+  authDomain: "musteri-takip-fe1d1.firebaseapp.com",
+  projectId: "musteri-takip-fe1d1",
+  storageBucket: "musteri-takip-fe1d1.firebasestorage.app",
+  messagingSenderId: "6041388925",
+  appId: "1:6041388925:web:1f86bb742b66c4edc16e14"
+};
+
+// Firebase SDK (CDN üzerinden, modular)
+let _db = null;
+let _firebase_ready = false;
+
+function loadFirebaseSDK() {
+  return new Promise((resolve) => {
+    if (_firebase_ready) { resolve(); return; }
+    // import maps ile modular SDK
+    const script1 = document.createElement('script');
+    script1.type = 'module';
+    script1.textContent = `
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+      import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, enableIndexedDbPersistence } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+      
+      const app = initializeApp({
+        apiKey: "AIzaSyDvB2qagXLj7NHCjqvOdQQQIuKbXi-LiLo",
+        authDomain: "musteri-takip-fe1d1.firebaseapp.com",
+        projectId: "musteri-takip-fe1d1",
+        storageBucket: "musteri-takip-fe1d1.firebasestorage.app",
+        messagingSenderId: "6041388925",
+        appId: "1:6041388925:web:1f86bb742b66c4edc16e14"
+      });
+      const db = getFirestore(app);
+      
+      // Offline cache
+      try { enableIndexedDbPersistence(db); } catch(e) {}
+      
+      window._firestore = db;
+      window._fsCollection = collection;
+      window._fsDoc = doc;
+      window._fsSetDoc = setDoc;
+      window._fsGetDocs = getDocs;
+      window._fsDeleteDoc = deleteDoc;
+      window._firebase_ready = true;
+      window.dispatchEvent(new Event('firebase_ready'));
+    `;
+    document.head.appendChild(script1);
+    window.addEventListener('firebase_ready', () => { _firebase_ready = true; resolve(); }, { once: true });
+    // Timeout fallback
+    setTimeout(() => { if (!_firebase_ready) { console.error('Firebase yüklenemedi'); resolve(); } }, 8000);
+  });
+}
+
+async function ensureFirebase() {
+  if (!_firebase_ready) await loadFirebaseSDK();
+  // Kısa bekleme - module script async
+  let tries = 0;
+  while (!window._firestore && tries < 50) {
+    await new Promise(r => setTimeout(r, 100));
+    tries++;
+  }
+}
+
+async function saveAll() {
+  try {
+    await ensureFirebase();
+    if (!window._firestore) throw new Error('Firestore hazır değil');
+    
+    const promises = customers.map(c => {
+      const docRef = window._fsDoc(window._firestore, 'customers', c.id);
+      return window._fsSetDoc(docRef, c);
+    });
+    await Promise.all(promises);
+    showSaveInd();
+    console.log('Firebase'e kaydedildi:', customers.length, 'müşteri');
+  } catch(e) {
+    console.error('Kayıt hatası:', e);
+    showSaveInd('hata');
+  }
+}
+
+async function loadAll() {
+  try {
+    showLoading(true);
+    await ensureFirebase();
+    if (!window._firestore) { customers = []; return; }
+    
+    const snapshot = await window._fsGetDocs(window._fsCollection(window._firestore, 'customers'));
+    customers = [];
+    snapshot.forEach(doc => {
+      const c = doc.data();
+      c.models = c.models || [];
+      c.models.forEach(m => { m.images = m.images || []; });
+      customers.push(c);
+    });
+    console.log('Firebase'den yüklendi:', customers.length, 'müşteri');
+  } catch(e) {
+    console.error('Yükleme hatası:', e);
+    customers = [];
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function deleteFromCloud(cid) {
+  try {
+    await ensureFirebase();
+    if (!window._firestore) return;
+    const docRef = window._fsDoc(window._firestore, 'customers', cid);
+    await window._fsDeleteDoc(docRef);
+  } catch(e) { console.error('Silme hatası:', e); }
+}
+
+function showLoading(show) {
+  let el = document.getElementById('loading-bar');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'loading-bar';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#3b82f6,#8b5cf6);z-index:9999;transition:opacity .5s;';
+    document.body.appendChild(el);
+  }
+  el.style.opacity = show ? '1' : '0';
+}
+
+function showSaveInd(type) {
+  const el = document.getElementById('save-ind');
+  if (type === 'hata') {
+    el.textContent = '⚠ Bağlantı hatası';
+    el.style.background = '#faeeda'; el.style.color = '#633806'; el.style.borderColor = '#f0c080';
+  } else {
+    el.textContent = '✓ Kaydedildi';
+    el.style.background = '#eaf3de'; el.style.color = '#27500a'; el.style.borderColor = '#c0dd97';
+  }
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// APP STATE
+// ============================================================
+let customers = [];   // tek source of truth
+let editId = null;
+let expanded = new Set();
+// formImages kaldırıldı - formModels kullanılıyor
+let entryCounter = 0; // artık kullanılmıyor
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let selectedDate = null;
+
+const AC = [{bg:'#E6F1FB',fg:'#0C447C'},{bg:'#E1F5EE',fg:'#085041'},{bg:'#EEEDFE',fg:'#3C3489'},{bg:'#FAEEDA',fg:'#633806'},{bg:'#FAECE7',fg:'#712B13'},{bg:'#FBEAF0',fg:'#72243E'}];
+const SC = {
+  waiting:{label:'Bekliyor',dot:'#EF9F27',cls:'bw'},
+  active:{label:'Aktif',dot:'#639922',cls:'ba'},
+  done:{label:'Tamamlandı',dot:'#378ADD',cls:'bd'}
+};
+
+// ============================================================
+// SAVE & LOAD
+// ============================================================
+async function saveAll() {
+  try {
+    // Tüm müşteri verisini (resimler dahil) tek seferde kaydet
+    await dbSave('all_customers', customers);
+    showSaveInd();
+    console.log('Kaydedildi:', customers.length, 'müşteri, toplam model:', customers.flatMap(c=>c.models).length);
+  } catch(e) {
+    console.error('IndexedDB kayıt hatası:', e);
+    // Resimler çok büyükse resimsiz kaydet
+    try {
+      await dbSave('all_customers', customers.map(c => ({
+        ...c,
+        models: c.models.map(m => ({...m, images: []}))
+      })));
+      showSaveInd();
+      console.warn('Resimler kaydedilemedi (çok büyük), metin verisi kaydedildi');
+    } catch(e2) {
+      console.error('Fallback kayıt hatası:', e2);
+    }
+  }
+}
+
+async function loadAll() {
+  try {
+    const saved = await dbLoad('all_customers');
+    if (saved && Array.isArray(saved)) {
+      customers = saved;
+      // Her modelin images alanı olduğundan emin ol
+      customers.forEach(c => {
+        c.models = c.models || [];
+        c.models.forEach(m => { m.images = m.images || []; });
+      });
+      console.log('Yüklendi:', customers.length, 'müşteri');
+    } else {
+      customers = [];
+    }
+  } catch(e) {
+    console.error('Yükleme hatası:', e);
+    customers = [];
+  }
+}
+
+function showSaveInd() {
+  const el = document.getElementById('save-ind');
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+function ini(n) { return n.trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase(); }
+function ac(i) { return AC[i % AC.length]; }
+function fD(iso) { if(!iso) return ''; try { return new Date(iso).toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}); } catch { return iso; } }
+function fDT(iso) { if(!iso) return ''; try { return new Date(iso).toLocaleString('tr-TR',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch { return iso; } }
+function fTime(iso) { if(!iso) return ''; try { return new Date(iso).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}); } catch { return ''; } }
+
+function showToast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show' + (type==='err' ? ' err' : '');
+  clearTimeout(el._t); el._t = setTimeout(() => el.className = '', 3500);
+}
+
+function openLB(src) { document.getElementById('lb-img').src = src; document.getElementById('lightbox').classList.add('open'); }
+function closeLB() { document.getElementById('lightbox').classList.remove('open'); }
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeLB(); });
+
+// ============================================================
+// TABS
+// ============================================================
+function showTab(t) {
+  ['liste','ekle','takvim'].forEach(id => {
+    document.getElementById('panel-'+id).style.display = id===t ? 'block' : 'none';
+    document.getElementById('tab-'+id).classList.toggle('active', id===t);
+  });
+  if (t === 'liste') renderList();
+  if (t === 'takvim') renderCal();
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function updateStats() {
+  const now = new Date();
+  document.getElementById('s-total').textContent = customers.length;
+  document.getElementById('s-active').textContent = customers.flatMap(c=>c.models).filter(m=>m.status!=='done').length;
+  const m = now.getMonth(), y = now.getFullYear();
+  document.getElementById('s-month').textContent = customers.filter(c => { if(!c.nextMeeting) return false; const d=new Date(c.nextMeeting); return d.getMonth()===m&&d.getFullYear()===y; }).length;
+  document.getElementById('s-upcoming').textContent = customers.flatMap(c=>c.models).filter(m => { if(!m.target||m.status==='done') return false; const diff=(new Date(m.target)-now)/(86400000); return diff>=0&&diff<=14; }).length;
+}
+
+// ============================================================
+// RENDER LIST
+// ============================================================
+function renderList() {
+  updateStats();
+  const q = document.getElementById('q').value.toLowerCase();
+  const fs = document.getElementById('fst').value;
+  const el = document.getElementById('clist');
+  const filtered = customers.filter(c => {
+    const ms = !q || c.name.toLowerCase().includes(q) || (c.contact||'').toLowerCase().includes(q);
+    const mf = fs==='all' || c.models.some(m=>m.status===fs);
+    return ms && mf;
+  });
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">${customers.length?'🔍':'👤'}</div>${customers.length?'Eşleşen müşteri yok.':'Henüz müşteri eklenmedi.<br><br><button class="btn btn-primary" onclick="openAddForm()">+ İlk Müşteriyi Ekle</button>'}</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(c => {
+    const idx = customers.indexOf(c);
+    const col = ac(idx);
+    const isOpen = expanded.has(c.id);
+    let body = '';
+    if (isOpen) {
+      const noteH = c.note ? `<div class="note-box"><div class="note-lbl">Görüşme notu</div><div class="note-txt">${esc(c.note)}</div></div>` : '';
+      let modH = '';
+      if (c.models.length) {
+        const cards = c.models.map(m => {
+          const imgs = m.images||[];
+          const main = imgs[0] ? `<img class="model-card-img" src="${imgs[0]}" onclick="openLB('${imgs[0]}')" alt="">` : `<div class="model-noimg">📦</div>`;
+          const extras = imgs.length>1 ? `<div class="model-extra">${imgs.slice(1).map(s=>`<img class="model-extra-thumb" src="${s}" onclick="openLB('${s}')">`).join('')}</div>` : '';
+          return `<div class="model-card">
+            ${main}
+            <div class="model-card-body">
+              <div class="model-card-name" title="${esc(m.name)}">${esc(m.name)}</div>
+              <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+                <span class="dot" style="background:${SC[m.status].dot}"></span>
+                <span class="badge ${SC[m.status].cls}" style="font-size:10px;padding:1px 6px;">${SC[m.status].label}</span>
+                ${imgs.length>1?`<span style="font-size:10px;color:#aaa;">+${imgs.length-1}</span>`:''}
+              </div>
+              ${m.target?`<div style="font-size:10px;color:#aaa;margin-top:3px;">🎯 ${fD(m.target)}</div>`:''}
+              ${extras}
+              <select style="width:100%;font-size:11px;padding:3px 5px;margin-top:6px;" onchange="changeModelStatus('${c.id}','${m.id}',this.value)">
+                <option value="waiting"${m.status==='waiting'?' selected':''}>Bekliyor</option>
+                <option value="active"${m.status==='active'?' selected':''}>Aktif</option>
+                <option value="done"${m.status==='done'?' selected':''}>Tamamlandı</option>
+              </select>
+            </div>
+          </div>`;
+        }).join('');
+        modH = `<div class="sec" style="margin-top:2px;">İstenen modeller</div><div class="models-grid">${cards}</div>`;
+      }
+      const meetH = c.nextMeeting ? `<div class="meeting-pill">📅 Sonraki görüşme: <strong>${fDT(c.nextMeeting)}</strong>${c.location?` · ${esc(c.location)}`:''}</div>` : '';
+      body = `<div class="card-body">${noteH}${modH}${meetH}</div>`;
+    }
+    return `<div class="cust-card">
+      <div class="card-hdr" onclick="toggleExpand('${c.id}')">
+        <div class="avatar" style="background:${col.bg};color:${col.fg}">${ini(c.name)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:500;">${esc(c.name)}</div>
+          <div style="font-size:12px;color:#999;margin-top:1px;">${esc(c.contact||'İletişim yok')}</div>
+        </div>
+        <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">
+          <span class="badge bp">${c.models.length} model</span>
+          ${c.nextMeeting?`<span class="badge" style="background:#dbeafe;color:#1e40af;font-size:10px;">📅 ${fD(c.nextMeeting)}</span>`:''}
+          <button class="btn btn-sm" onclick="event.stopPropagation();startEdit('${c.id}')">Düzenle</button>
+          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteCustomer('${c.id}')">Sil</button>
+          <span class="chevron${isOpen?' open':''}">▼</span>
+        </div>
+      </div>
+      ${body}
+    </div>`;
+  }).join('');
+}
+
+function toggleExpand(id) { expanded.has(id) ? expanded.delete(id) : expanded.add(id); renderList(); }
+
+async function changeModelStatus(cid, mid, newStatus) {
+  const c = customers.find(x=>x.id===cid); if(!c) return;
+  const m = c.models.find(x=>x.id===mid); if(!m) return;
+  m.status = newStatus;
+  await saveAll();
+  renderList();
+}
+
+async function deleteCustomer(cid) {
+  if (!confirm('Bu müşteriyi silmek istediğinize emin misiniz?')) return;
+  customers = customers.filter(c=>c.id!==cid);
+  expanded.delete(cid);
+  await deleteFromCloud(cid);
+  renderList();
+  showToast('Müşteri silindi');
+}
+
+// ============================================================
+// FORM
+// ============================================================
+function openAddForm() {
+  editId = null;
+  formModels = [];
+  document.getElementById('fn').value = '';
+  document.getElementById('fc').value = '';
+  document.getElementById('fno').value = '';
+  document.getElementById('fdt').value = '';
+  document.getElementById('floc').value = '';
+  document.getElementById('fdur').value = '60';
+  document.getElementById('mentries').innerHTML = '';
+  document.getElementById('sbtn').textContent = '💾 Kaydet';
+  document.getElementById('tab-ekle').textContent = '➕ Yeni Müşteri';
+  addME();
+  showTab('ekle');
+}
+
+function cancelForm() { editId = null; formModels = []; showTab('liste'); }
+
+// ============================================================
+// FORM MODEL STATE — DOM'a bağımlı değil, JS array'de tutulur
+// ============================================================
+let formModels = []; // [{id, name, target, status, images:[base64...]}]
+
+function newModelObj(data) {
+  return {
+    id: data?.id || ('m' + Date.now() + '_' + Math.random().toString(36).slice(2,7)),
+    name: data?.name || '',
+    target: data?.target || '',
+    status: data?.status || 'waiting',
+    images: data?.images ? [...data.images] : []
+  };
+}
+
+function addME(modelData) {
+  const m = newModelObj(modelData);
+  formModels.push(m);
+  renderFormModels();
+}
+
+function renderFormModels() {
+  const container = document.getElementById('mentries');
+  container.innerHTML = '';
+  formModels.forEach((m, idx) => {
+    const dotColor = {waiting:'#EF9F27',active:'#639922',done:'#378ADD'}[m.status];
+    const div = document.createElement('div');
+    div.className = 'model-entry';
+    div.innerHTML = `
+      <div class="me-top">
+        <span class="dot" style="background:${dotColor};"></span>
+        <div class="me-fields">
+          <input type="text" placeholder="Model adı / kodu" value="${esc(m.name)}"
+            oninput="formModels[${idx}].name=this.value">
+          <input type="date" value="${m.target}"
+            onchange="formModels[${idx}].target=this.value">
+          <select onchange="formModels[${idx}].status=this.value;this.previousElementSibling.previousElementSibling.previousElementSibling.style.background={waiting:'#EF9F27',active:'#639922',done:'#378ADD'}[this.value]">
+            <option value="waiting"${m.status==='waiting'?' selected':''}>Bekliyor</option>
+            <option value="active"${m.status==='active'?' selected':''}>Aktif</option>
+            <option value="done"${m.status==='done'?' selected':''}>Tamamlandı</option>
+          </select>
+        </div>
+        <button class="rem-btn" onclick="removeModelAtIdx(${idx})">×</button>
+      </div>
+      <div class="me-imgs">
+        <button class="upload-btn" type="button" onclick="triggerImgUpload(${idx})">📷 Fotoğraf ekle</button>
+        <input type="file" id="imgfile_${idx}" accept="image/*" multiple style="display:none"
+          onchange="handleImgUpload(${idx},this)">
+        <div class="tform" id="thumbs_${idx}">
+          ${m.images.map((src,i) => `
+            <div class="tf">
+              <img src="${src}" onclick="openLB('${src}')">
+              <button class="tf-del" onclick="removeImg(${idx},${i})">×</button>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    container.appendChild(div);
+  });
+}
+
+function triggerImgUpload(idx) {
+  document.getElementById('imgfile_' + idx).click();
+}
+
+function handleImgUpload(idx, input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  let loaded = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      formModels[idx].images.push(e.target.result);
+      loaded++;
+      if (loaded === files.length) renderFormModels();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function removeImg(idx, imgIdx) {
+  formModels[idx].images.splice(imgIdx, 1);
+  renderFormModels();
+}
+
+function removeModelAtIdx(idx) {
+  if (formModels.length > 1) {
+    formModels.splice(idx, 1);
+    renderFormModels();
+  }
+}
+
+function getFormModels() {
+  // Doğrudan formModels array'ini döndür — DOM okuma yok
+  return formModels
+    .filter(m => m.name.trim() || m.target || m.images.length > 0)
+    .map(m => ({
+      ...m,
+      name: m.name.trim() || '(isimsiz model)'
+    }));
+}
+
+
+function startEdit(cid) {
+  const c = customers.find(x=>x.id===cid);
+  if (!c) return;
+  editId = cid;
+  formImages = {};
+  document.getElementById('fn').value = c.name;
+  document.getElementById('fc').value = c.contact || '';
+  document.getElementById('fno').value = c.note || '';
+  document.getElementById('floc').value = c.location || '';
+  document.getElementById('fdur').value = c.duration || '60';
+  if (c.nextMeeting) {
+    const dt = new Date(c.nextMeeting);
+    document.getElementById('fdt').value = new Date(dt.getTime() - dt.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  } else {
+    document.getElementById('fdt').value = '';
+  }
+  formModels = [];
+  const models = c.models.length ? c.models : [{name:'',target:'',status:'waiting',images:[]}];
+  models.forEach(m => formModels.push(newModelObj(m)));
+  renderFormModels();
+  document.getElementById('sbtn').textContent = '💾 Güncelle';
+  document.getElementById('tab-ekle').textContent = '✏️ Düzenle';
+  showTab('ekle');
+}
+
+async function saveCustomer() {
+  const name = document.getElementById('fn').value.trim();
+  if (!name) { showToast('Müşteri adı gerekli!', 'err'); return; }
+
+  const btn = document.getElementById('sbtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Kaydediliyor...';
+
+  const models = getFormModels();
+  console.log('Kaydedilecek modeller:', models.length, models.map(m=>m.name));
+
+  const customer = {
+    id: editId || ('c' + Date.now()),
+    name,
+    contact: document.getElementById('fc').value.trim(),
+    note: document.getElementById('fno').value.trim(),
+    location: document.getElementById('floc').value.trim(),
+    nextMeeting: document.getElementById('fdt').value,
+    duration: document.getElementById('fdur').value,
+    models,
+    createdAt: editId ? (customers.find(c=>c.id===editId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (editId) {
+    const idx = customers.findIndex(c=>c.id===editId);
+    if (idx !== -1) customers[idx] = customer;
+    else customers.push(customer);
+  } else {
+    customers.push(customer);
+  }
+
+  await saveAll();
+
+  editId = null;
+  formImages = {};
+  btn.disabled = false;
+  btn.textContent = '💾 Kaydet';
+  document.getElementById('tab-ekle').textContent = '➕ Yeni Müşteri';
+  expanded.add(customer.id);
+  showTab('liste');
+  showToast(name + ' kaydedildi ✓');
+}
+
+// ============================================================
+// CALENDAR
+// ============================================================
+function getAllEvents() {
+  const evs = [];
+  customers.forEach(c => {
+    if (c.nextMeeting) {
+      evs.push({type:'meeting', date:new Date(c.nextMeeting), title:c.name+' görüşmesi', customer:c.name, time:fTime(c.nextMeeting), location:c.location, cid:c.id});
+    }
+    c.models.forEach(m => {
+      if (m.target) {
+        evs.push({type:'model', date:new Date(m.target+'T00:00:00'), title:m.name+' — '+c.name, customer:c.name, model:m.name, status:m.status, cid:c.id});
+      }
+    });
+  });
+  return evs;
+}
+
+function renderCal() {
+  updateStats();
+  const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  document.getElementById('cal-title').textContent = MONTHS[calMonth] + ' ' + calYear;
+  const grid = document.getElementById('cal-grid');
+  const allEvs = getAllEvents();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const firstDay = (new Date(calYear, calMonth, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const daysInPrev = new Date(calYear, calMonth, 0).getDate();
+  const totalCells = Math.ceil((firstDay+daysInMonth)/7)*7;
+  let cells = '';
+  for (let i = 0; i < totalCells; i++) {
+    let day, isOther=false, y=calYear, m=calMonth;
+    if (i < firstDay) { day=daysInPrev-firstDay+i+1; isOther=true; m=calMonth-1; if(m<0){m=11;y--;} }
+    else if (i >= firstDay+daysInMonth) { day=i-firstDay-daysInMonth+1; isOther=true; m=calMonth+1; if(m>11){m=0;y++;} }
+    else { day=i-firstDay+1; }
+    const cellDate = new Date(y,m,day); cellDate.setHours(0,0,0,0);
+    const isToday = cellDate.getTime()===today.getTime();
+    const dateStr = y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const isSel = selectedDate===dateStr;
+    const dayEvs = allEvs.filter(e=>{ const d=new Date(e.date); d.setHours(0,0,0,0); return d.getTime()===cellDate.getTime(); });
+    let evHtml = dayEvs.slice(0,2).map(e=>`<div class="cal-event ${e.type}" onclick="event.stopPropagation();selectDate('${dateStr}')">${esc(e.title)}</div>`).join('');
+    if (dayEvs.length>2) evHtml += `<div class="cal-more">+${dayEvs.length-2} daha</div>`;
+    const numHtml = isToday ? `<div class="cal-day-num" style="background:#1a1a1a;color:#fff;border-radius:50%;">${day}</div>` : `<div class="cal-day-num">${day}</div>`;
+    cells += `<div class="cal-cell${isOther?' other-month':''}${isSel?' selected':''}" onclick="selectDate('${dateStr}')">${numHtml}${evHtml}</div>`;
+  }
+  grid.innerHTML = cells;
+  if (selectedDate) showDayDetail(selectedDate);
+  else document.getElementById('cal-detail').style.display='none';
+}
+
+function selectDate(ds) { selectedDate = selectedDate===ds ? null : ds; renderCal(); }
+
+function showDayDetail(ds) {
+  const [y,m,d] = ds.split('-').map(Number);
+  const target = new Date(y,m-1,d); target.setHours(0,0,0,0);
+  const allEvs = getAllEvents();
+  const dayEvs = allEvs.filter(e=>{ const ed=new Date(e.date); ed.setHours(0,0,0,0); return ed.getTime()===target.getTime(); });
+  const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  const det = document.getElementById('cal-detail');
+  det.style.display='block';
+  if (!dayEvs.length) { det.innerHTML=`<div class="cal-detail-title">${d} ${MONTHS[m-1]} ${y}</div><div style="font-size:13px;color:#bbb;padding:8px 0;">Bu gün için etkinlik yok.</div>`; return; }
+  det.innerHTML=`<div class="cal-detail-title">📅 ${d} ${MONTHS[m-1]} ${y} — ${dayEvs.length} etkinlik</div>`+
+    dayEvs.map(e=>`<div class="cal-event-item">
+      <div class="cal-event-dot" style="background:${e.type==='meeting'?'#3b82f6':'#22c55e'}"></div>
+      <div style="flex:1;">
+        <div class="cal-event-name">${esc(e.title)}</div>
+        <div class="cal-event-meta">${e.type==='meeting'?'Müşteri Görüşmesi':'Model Hedef Tarihi'}${e.time?' · '+e.time:''}${e.location?' · '+esc(e.location):''}</div>
+        ${e.status?`<span class="badge ${SC[e.status].cls}" style="margin-top:4px;display:inline-flex;">${SC[e.status].label}</span>`:''}
+      </div>
+      <button class="btn btn-sm" onclick="startEdit('${e.cid}')">Düzenle</button>
+    </div>`).join('');
+}
+
+function prevMonth() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} selectedDate=null; renderCal(); }
+function nextMonth() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} selectedDate=null; renderCal(); }
+function goToday() { calYear=new Date().getFullYear(); calMonth=new Date().getMonth(); selectedDate=null; renderCal(); }
+
+// ============================================================
+// BOOT
+// ============================================================
+loadAll().then(() => {
+  renderList();
+  console.log('Yüklendi:', customers.length, 'müşteri');
+});
+</script>
+</body>
+</html>
