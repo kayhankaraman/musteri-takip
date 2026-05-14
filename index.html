@@ -329,47 +329,7 @@ const SC = {
 // ============================================================
 // SAVE & LOAD
 // ============================================================
-async function saveAll() {
-  try {
-    // Tüm müşteri verisini (resimler dahil) tek seferde kaydet
-    await dbSave('all_customers', customers);
-    showSaveInd();
-    console.log('Kaydedildi:', customers.length, 'müşteri, toplam model:', customers.flatMap(c=>c.models).length);
-  } catch(e) {
-    console.error('IndexedDB kayıt hatası:', e);
-    // Resimler çok büyükse resimsiz kaydet
-    try {
-      await dbSave('all_customers', customers.map(c => ({
-        ...c,
-        models: c.models.map(m => ({...m, images: []}))
-      })));
-      showSaveInd();
-      console.warn('Resimler kaydedilemedi (çok büyük), metin verisi kaydedildi');
-    } catch(e2) {
-      console.error('Fallback kayıt hatası:', e2);
-    }
-  }
-}
-
-async function loadAll() {
-  try {
-    const saved = await dbLoad('all_customers');
-    if (saved && Array.isArray(saved)) {
-      customers = saved;
-      // Her modelin images alanı olduğundan emin ol
-      customers.forEach(c => {
-        c.models = c.models || [];
-        c.models.forEach(m => { m.images = m.images || []; });
-      });
-      console.log('Yüklendi:', customers.length, 'müşteri');
-    } else {
-      customers = [];
-    }
-  } catch(e) {
-    console.error('Yükleme hatası:', e);
-    customers = [];
-  }
-}
+// Eski IndexedDB fonksiyonları kaldırıldı - Firebase kullanılıyor
 
 function showSaveInd() {
   const el = document.getElementById('save-ind');
