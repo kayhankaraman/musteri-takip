@@ -593,15 +593,7 @@ function removeModelAtIdx(idx) {
   }
 }
 
-function getFormModels() {
-  // Doğrudan formModels array'ini döndür — DOM okuma yok
-  return formModels
-    .filter(m => m.name.trim() || m.target || m.images.length > 0)
-    .map(m => ({
-      ...m,
-      name: m.name.trim() || '(isimsiz model)'
-    }));
-}
+
 
 
 function startEdit(cid) {
@@ -637,7 +629,9 @@ async function saveCustomer() {
   btn.disabled = true;
   btn.textContent = '⏳ Kaydediliyor...';
 
-  const models = getFormModels();
+  // formModels'i direkt kullan - DOM okuma yok
+  const models = formModels.filter(m => m.name.trim() || m.target || m.images.length > 0)
+    .map(m => ({...m, name: m.name.trim() || '(isimsiz model)'}));
   console.log('Kaydedilecek modeller:', models.length, models.map(m=>m.name));
 
   const customer = {
