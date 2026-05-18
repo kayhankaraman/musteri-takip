@@ -123,6 +123,7 @@ textarea{min-height:66px;resize:vertical;}
 <!-- Firebase CDN -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 </head>
 <body>
 <div class="app">
@@ -164,8 +165,8 @@ textarea{min-height:66px;resize:vertical;}
     <div class="form-panel">
       <div class="sec">Müşteri bilgileri</div>
       <div class="form-row">
-        <div class="fg"><label class="fl">Ad soyad *</label><input type="text" id="fn" placeholder="Ahmet Yıldız"></div>
-        <div class="fg"><label class="fl">Telefon / e-posta</label><input type="text" id="fc" placeholder="0500 000 00 00"></div>
+        <div class="fg"><label class="fl">Ad soyad *</label><input type="text" id="fn" placeholder="Ahmet Yıldız" autocomplete="name" inputmode="text"></div>
+        <div class="fg"><label class="fl">Telefon / e-posta</label><input type="tel" id="fc" placeholder="0500 000 00 00" autocomplete="tel"></div>
       </div>
       <div class="fg"><label class="fl">Görüşme notu</label><textarea id="fno" placeholder="Bu görüşmede neler konuşuldu?"></textarea></div>
       <div class="sec" style="margin-top:18px;">İstenen modeller <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#ccc;font-size:11px;">— her modele fotoğraf ekleyebilirsiniz</span></div>
@@ -239,9 +240,44 @@ firebase.initializeApp({
 });
 
 const db = firebase.firestore();
+const storage = firebase.storage();
+
+// Resmi Storage'a yükle, URL döndür
+async function uploadImage(base64, path) {
+  // Zaten URL ise (daha önce yüklenmiş) direkt döndür
+  if (base64.startsWith('https://')) return base64;
+  try {
+    const ref = storage.ref(path);
+    await ref.putString(base64, 'data_url');
+    return await ref.getDownloadURL();
+  } catch(e) {
+    console.error('Resim yükleme hatası:', e);
+    return base64; // hata olursa base64'ü koru
+  }
+}
 
 async function saveAll() {
   try {
+    // Resimleri Storage'a yükle, URL'lere çevir
+    for (const c of customers) {
+      for (const m of c.models) {
+        if (m.images && m.images.length > 0) {
+          const uploadedUrls = [];
+          for (let i = 0; i < m.images.length; i++) {
+            const img = m.images[i];
+            if (img && !img.startsWith('https://')) {
+              const path = `images/${c.id}/${m.id}/${i}_${Date.now()}.jpg`;
+              const url = await uploadImage(img, path);
+              uploadedUrls.push(url);
+            } else if (img) {
+              uploadedUrls.push(img);
+            }
+          }
+          m.images = uploadedUrls;
+        }
+      }
+    }
+    // Firestore'a kaydet (artık URL'ler var, base64 yok)
     const batch = db.batch();
     customers.forEach(c => {
       const ref = db.collection('customers').doc(c.id);
@@ -750,6 +786,9 @@ function prevMonth() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} select
 function nextMonth() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} selectedDate=null; renderCal(); }
 function goToday() { calYear=new Date().getFullYear(); calMonth=new Date().getMonth(); selectedDate=null; renderCal(); }
 
+// ============================================================
+// CONTACT PICKER API
+// ============================================================
 // ============================================================
 // BOOT
 // ============================================================
