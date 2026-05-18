@@ -355,6 +355,10 @@ function showToast(msg, type='ok') {
 }
 
 function openLB(src) { document.getElementById('lb-img').src = src; document.getElementById('lightbox').classList.add('open'); }
+function openLBIdx(cidx, midx, iidx) {
+  const src = customers[cidx]?.models[midx]?.images[iidx];
+  if (src) openLB(src);
+}
 function closeLB() { document.getElementById('lightbox').classList.remove('open'); }
 document.addEventListener('keydown', e => { if(e.key === 'Escape') closeLB(); });
 
@@ -408,10 +412,11 @@ function renderList() {
       const noteH = c.note ? `<div class="note-box"><div class="note-lbl">Görüşme notu</div><div class="note-txt">${esc(c.note)}</div></div>` : '';
       let modH = '';
       if (c.models.length) {
-        const cards = c.models.map(m => {
+        const cards = c.models.map((m, mi) => {
           const imgs = m.images||[];
-          const main = imgs[0] ? `<img class="model-card-img" src="${imgs[0]}" onclick="openLB('${imgs[0]}')" alt="">` : `<div class="model-noimg">📦</div>`;
-          const extras = imgs.length>1 ? `<div class="model-extra">${imgs.slice(1).map(s=>`<img class="model-extra-thumb" src="${s}" onclick="openLB('${s}')">`).join('')}</div>` : '';
+          const cidx = customers.indexOf(c);
+          const main = imgs[0] ? `<img class="model-card-img" src="${imgs[0]}" onclick="openLBIdx(${cidx},${mi},0)" alt="">` : `<div class="model-noimg">📦</div>`;
+          const extras = imgs.length>1 ? `<div class="model-extra">${imgs.slice(1).map((s,si)=>`<img class="model-extra-thumb" src="${s}" onclick="openLBIdx(${cidx},${mi},${si+1})">`).join('')}</div>` : '';
           return `<div class="model-card">
             ${main}
             <div class="model-card-body">
