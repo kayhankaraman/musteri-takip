@@ -546,8 +546,11 @@ function renderFormModels() {
         <button class="rem-btn" onclick="removeModelAtIdx(${idx})">×</button>
       </div>
       <div class="me-imgs">
-        <button class="upload-btn" type="button" onclick="triggerImgUpload(${idx})">📷 Fotoğraf ekle</button>
+        <button class="upload-btn" type="button" onclick="triggerImgUpload(${idx})">🖼️ Galeriden</button>
+        <button class="upload-btn" type="button" onclick="triggerCameraUpload(${idx})">📷 Kameradan çek</button>
         <input type="file" id="imgfile_${idx}" accept="image/*" multiple style="display:none"
+          onchange="handleImgUpload(${idx},this)">
+        <input type="file" id="camfile_${idx}" accept="image/*" capture="environment" style="display:none"
           onchange="handleImgUpload(${idx},this)">
         <div class="tform" id="thumbs_${idx}">
           ${m.images.map((src,i) => `
@@ -563,6 +566,9 @@ function renderFormModels() {
 
 function triggerImgUpload(idx) {
   document.getElementById('imgfile_' + idx).click();
+}
+function triggerCameraUpload(idx) {
+  document.getElementById('camfile_' + idx).click();
 }
 
 function handleImgUpload(idx, input) {
